@@ -6,11 +6,7 @@
 # Main program
 
 import logging
-from settings import Settings
-from schedule import Schedule
-from huecontrols import Hue_Control
-from mobifunctions import print_welcome
-from time import sleep
+from mobifunctions import main
 
 
 # Logging setup
@@ -22,25 +18,6 @@ requests_logger.name = "requests"
 
 
 if __name__ == "__main__":
-
-    print_welcome()
-    settings = Settings()
-
-    schedule = Schedule(settings.transport, settings.stop, settings.mobiliteit_url)
-
-    schedule.update()
-    hue_control = Hue_Control(**settings.hue)
-    print(schedule.last_update)
-    print(schedule.next_departure.line, schedule.next_departure.direction)
-
-    for Bus in schedule.all_departures:
-        print(Bus.eta)
-
-    hue_control.light.on()
-
-    hue_control.light.set_state(alert="select")
-
-    sleep(3)
-    hue_control.light.reset()
-    hue_control.sensor.poll()
-    hue_control.sensor.last_action
+    """Main program runtime."""
+    
+    main()

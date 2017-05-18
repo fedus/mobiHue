@@ -34,36 +34,36 @@ class Light():
     @property
     def is_on(self):
         """Returns True or False depending on whether the Hue light is on or off."""
-        return self.hue_light()["state"]["on"]
+        self.is_on_result = self.hue_light()["state"]["on"]
+        logger.debug("  >> On / off state of light requested. Result: {}".format(self.is_on_result))
+        return self.is_on_result
 
     def set_state(self, **new_state):
         """Changes the state of the Hue light."""
-        logger.info("Setting new light state.")
-        logger.debug("  >> New state: " + str(new_state))
+        logger.debug("  >> Settings new light state: {}".format(str(new_state)))
         self.hue_light.state(**new_state)
         self.state_has_changed = True
         return True
 
     def reset(self):
         """Resets the Hue light to its initial state."""
-        logger.info("Resetting light.")
         if self.state_has_changed:
             if self.initial_state["on"]:
-                logger.debug("  >> Light was on at program start, resetting relevant attributes.")
+                logger.debug("  >> Light reset requested: Light was on at program start, restoring relevant attributes.")
                 self.set_state(**self.initial_state)
                 return True
             elif not self.initial_state["on"]:
-                logger.debug("  >> Light was off at program start, turning it off again.")
+                logger.debug("  >> Light reset requested: Light was off at program start, turning it off again.")
                 self.set_state(on=False)
                 return True
             else:
-                logger.error("  >> Unexpected value encountered in initial_state variable.")
+                logger.error("  >> Light reset requested: Unexpected value encountered in initial_state variable.")
                 return False
         elif not self.state_has_changed:
-            logger.debug("  >> Light state had not been changed, no action necessary.")
+            logger.debug("  >> Light reset requested: Light state had not been changed, no action necessary.")
             return True
         else:
-            logger.error("  >> Unexpected value encountered in state_has_changed variable.")
+            logger.error("  >> Light reset requested: Unexpected value encountered in state_has_changed variable.")
             return False
 
     def on(self):
@@ -73,11 +73,11 @@ class Light():
         elif not self.state_has_changed:
             self.current_on_state = self.initial_state["on"]
         if not self.current_on_state:
-            logger.info("Turning light on.")
+            logger.debug("  >> Turning light on: Done.")
             self.set_state(on=True)
             return True
         elif self.current_on_state:
-            logger.info("Light already on.")
+            logger.info("  >> Turning light on: Light already on.")
             return True
         else:
             return False
@@ -91,6 +91,7 @@ class Sensor():
         self.hue_sensor = bridge.sensors[sensor_id]
         self.reference_time = datetime.now().replace(microsecond=0)
         self.current_sensor_state = None
+        self.has_been_polled = False
 
     def _datetime_from_utc_to_local(self, utc_datetime):
         self.current_time = time()
@@ -100,41 +101,29 @@ class Sensor():
     
     def poll(self):
         """Polls the Hue bridge for the current status of the sensor."""
-        logger.info("Retrieving current sensor state.")
         self.current_sensor_state = self.hue_sensor()["state"]
-        logger.debug("  >> Current sensor state: " + str(self.current_sensor_state))
+        logger.debug("  >> Polling sensor. Current sensor state : {}".format(str(self.current_sensor_state)))
+        self.has_been_polled = True
         return True
 
     @property
     def last_action(self):
         """Returns a list with a datetime object of the last time the Hue sensor has been actioned and with what code"""
-        logger.info("Last action of sensor has been requested.")
-        if self.current_sensor_state:
+        if self.has_been_polled:
+            self.friendly_sensor_time = self._datetime_from_utc_to_local(datetime.strptime(self.current_sensor_state["lastupdated"], "%Y-%m-%dT%H:%M:%S"))
+            if self.friendly_sensor_time >= self.reference_time:
+                self.actioned_response = True
+            elif self.friendly_sensor_time < self.reference_time:
+                self.actioned_response = False
             self.friendly_current_sensor_state = {
-                    "time": self._datetime_from_utc_to_local(datetime.strptime(self.current_sensor_state["lastupdated"],
-                        "%Y-%m-%dT%H:%M:%S")),
-                    "action": self.current_sensor_state["buttonevent"],
+                    "time": self.friendly_sensor_time,
+                    "button": self.current_sensor_state["buttonevent"],
+                    "actioned": self.actioned_response,
                 }
+            logger.debug("  >> Last action of sensor has been requested: Returning parsed sensor data from cache. Data: "+str(self.friendly_current_sensor_state))
             return self.friendly_current_sensor_state
-        elif self.current_sensor_state == None:
-            logger.warning("Last action of sensor has been requested, but it seems that it has not been polled yet.")
-            return False
-
-    @property
-    def actioned(self):
-        """Returns a tuple of True and the corresponding action if sensor has been actioned since the instance start,
-        or a simple False if not."""
-        logger.info("Checking if sensor has been actioned since program start.")
-        self.get_last_action = self.last_action
-        if self.get_last_action["time"] >= self.reference_time:
-            self.actioned_response = (True, self.get_last_action["action"])
-            logger.debug("  >> Sensor has been actioned. Response: "+str(self.actioned_response))
-            return self.actioned_response
-        elif self.get_last_action["time"] < self.reference_time:
-            logger.debug("  >> Sensor has not been actioned.")
-            return False
-        else:
-            logger.error("  >> Unexpected value encountered in get_last_action variable.")
+        elif not self.has_been_polled:
+            logger.warning("  >> Last action of sensor has been requested: Could not return data as it seems that the sensor has not been polled yet.")
             return False
 
 
