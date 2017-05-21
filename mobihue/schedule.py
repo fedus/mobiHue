@@ -26,11 +26,11 @@ class Bus():
         self.eta = eta
         self.delay = delay
         self.zone = zone
-    
+
     def __str__(self):
         """Returns a human readable representation of the Bus class instance."""
         return "Bus instance [line: {}, direction: {}, time: {}, real time: {}, eta: {}, delay: {}, zone: {}]".format(self.line, self.direction, self.time, self.rtTime, self.eta, self.delay, self.zone)
-    
+
     def __repr__(self):
         """Returns an object representation of the Bus class instance."""
         return "Bus({}, {}, {}, {}, {}, {}, {})".format(self.line, self.direction, self.time, self.rtTime, self.eta, self.delay, self.zone)
@@ -38,7 +38,7 @@ class Bus():
 
 class Schedule():
     """Connects to the Mobiliteit.lu API and returns all relevant timetable data for the program"""
-    
+
     def __init__(self, transport, stop_id, api_base_url, zones):
         """Initialise the Schedule class"""
         self.transport = transport
@@ -70,7 +70,7 @@ class Schedule():
                     raise
             break
         return self.api_request
-    
+
     def _mobi_api_json(self):
         """Executes the Mobiliteit.lu API request function and turns the result into a JSON object"""
         self.api_request = self._mobi_api_request()
@@ -81,7 +81,7 @@ class Schedule():
             sys.exit("Aborting ...")
         else:
             return self.api_json
-    
+
     def _string_to_datetime(self, journey, is_real_time):
         """"Converts strings of scheduled and realtime date-times to datetime objects"""
         self.hafas_datetime_pattern = "%Y-%m-%d %H:%M:%S"
@@ -89,7 +89,7 @@ class Schedule():
             return datetime.strptime(journey["rtDate"]+" "+journey["rtTime"], self.hafas_datetime_pattern)
         elif not is_real_time:
             return datetime.strptime(journey["date"]+" "+journey["time"], self.hafas_datetime_pattern)
-    
+
     def _eta_to_zone(self, eta):
         """Returns the appropriate zone for a given estimated time of arrival."""
         self.eta_minutes = eta.seconds // 60
@@ -106,7 +106,7 @@ class Schedule():
             # Bus or train at safe distance
             self.zone_name = "further"
         return self.zone_name
-    
+
     def _parseJourneyTimes(self, journey, time_anchor):
         """Calculates all relevant date-times for a given journey"""
         self.scheduled_time = self._string_to_datetime(journey, False)
@@ -131,7 +131,7 @@ class Schedule():
             "zone": self.current_zone,
         }
         return self.parsed_journey_times
-    
+
     def update(self):
         """Parses the raw Mobiliteit.lu response and returns a final list of all relevant buses and all relevant times in accordance with the settings"""
         self.raw_schedule = self._mobi_api_json()
@@ -157,7 +157,7 @@ class Schedule():
             return True
         elif "Departure" not in self.raw_schedule:
             return False
-    
+
     def _assign_schedule_variables(self, parsed_schedule):
         """Assigns schedule data to the right internal variables."""
         self.next_departure = parsed_schedule[0]

@@ -41,7 +41,6 @@ class Settings():
     def _colour_name_to_xy(self, colour_name):
         """Transforms a plain colour name to the XY format used by the Hue system."""
         self.colour_rgb = name_to_rgb(colour_name)
-        print(self.colour_rgb[0], self.colour_rgb[1], self.colour_rgb[2])
         self.colour_xy = self.converter.rgb_to_xy(self.colour_rgb[0], self.colour_rgb[1], self.colour_rgb[2])
         return self.colour_xy
 

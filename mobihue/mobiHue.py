@@ -6,7 +6,8 @@
 # Main program
 
 import logging
-from mobifunctions import main
+from mhcontroller import Controller
+from mobifunctions import print_welcome
 
 
 # Logging setup
@@ -19,5 +20,9 @@ requests_logger.name = "requests"
 
 if __name__ == "__main__":
     """Main program runtime."""
-    
-    main()
+
+    print_welcome()
+    logger.info("Starting synchronisation module ...")
+    controller = Controller()
+    controller.run()
+    logger.info("Exiting program ...")

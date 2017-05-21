@@ -35,12 +35,12 @@ class Light():
     def is_on(self):
         """Returns True or False depending on whether the Hue light is on or off."""
         self.is_on_result = self.hue_light()["state"]["on"]
-        logger.debug("  >> On / off state of light requested. Result: {}".format(self.is_on_result))
+        logger.debug("  >> On / off state of light requested. Result: %s", self.is_on_result)
         return self.is_on_result
 
     def set_state(self, **new_state):
         """Changes the state of the Hue light."""
-        logger.debug("  >> Settings new light state: {}".format(str(new_state)))
+        logger.debug("  >> Setting new light state: %s", str(new_state))
         self.hue_light.state(**new_state)
         self.state_has_changed = True
         return True
@@ -73,11 +73,11 @@ class Light():
         elif not self.state_has_changed:
             self.current_on_state = self.initial_state["on"]
         if not self.current_on_state:
-            logger.debug("  >> Turning light on: Done.")
+            logger.debug("  >> Light turned on.")
             self.set_state(on=True)
             return True
         elif self.current_on_state:
-            logger.info("  >> Turning light on: Light already on.")
+            logger.debug("  >> Light already on.")
             return True
         else:
             return False
@@ -102,7 +102,7 @@ class Sensor():
     def poll(self):
         """Polls the Hue bridge for the current status of the sensor."""
         self.current_sensor_state = self.hue_sensor()["state"]
-        logger.debug("  >> Polling sensor. Current sensor state : {}".format(str(self.current_sensor_state)))
+        logger.debug("  >> Polling sensor. Current sensor state : %s", str(self.current_sensor_state))
         self.has_been_polled = True
         return True
 
@@ -120,7 +120,7 @@ class Sensor():
                     "button": self.current_sensor_state["buttonevent"],
                     "actioned": self.actioned_response,
                 }
-            logger.debug("  >> Last action of sensor has been requested: Returning parsed sensor data from cache. Data: "+str(self.friendly_current_sensor_state))
+            logger.debug("  >> Last action of sensor has been requested: Returning parsed sensor data from cache. Data: %s", str(self.friendly_current_sensor_state))
             return self.friendly_current_sensor_state
         elif not self.has_been_polled:
             logger.warning("  >> Last action of sensor has been requested: Could not return data as it seems that the sensor has not been polled yet.")
