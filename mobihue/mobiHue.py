@@ -5,24 +5,57 @@
 # (c) 2017 Federico Gentile
 # Main program
 
+
 import logging
+import logging.handlers
 from mhcontroller import Controller
 from mobifunctions import print_welcome
 
-
 # Logging setup
-logging_white_spaces = 13
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s [%(levelname)-8s] %(name)13s ~ %(message)s', datefmt='%Y/%m/%d %H:%M:%S')
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("mH")
+logger.setLevel(logging.DEBUG)
+logging_filehandler = logging.handlers.TimedRotatingFileHandler("mobiHue.log", when='midnight', interval=1, backupCount=7, encoding=None, delay=True, utc=False, atTime=None)
+logging_consolehandler = logging.StreamHandler()
+logging_formatter = logging.Formatter('%(asctime)s [%(levelname)-8s] %(name)15s ~ %(message)s', datefmt='%Y/%m/%d %H:%M:%S')
+logging_filehandler.setFormatter(logging_formatter)
+logging_consolehandler.setFormatter(logging_formatter)
+logger.addHandler(logging_consolehandler)
+
+
 requests_logger = logging.getLogger("requests.packages.urllib3.connectionpool")
-requests_logger.name = "requests"
+requests_logger.propagate = True
+requests_logger.setLevel(logging.DEBUG)
+requests_logger.name = "mH.requests"
+
 
 
 if __name__ == "__main__":
     """Main program runtime."""
 
-    print_welcome()
-    logger.info("Starting synchronisation module ...")
-    controller = Controller()
-    controller.run()
-    logger.info("Exiting program ...")
+    import sys
+
+    if len(sys.argv) != 2:
+        sys.exit("Syntax: %s standalone | start | stop | status" % sys.argv[0])
+
+    cmd = sys.argv[1].lower()
+
+    if cmd == "standalone":
+        print_welcome()
+        logger.info("Starting synchronisation module ...")
+        controller = Controller()
+        controller.run()
+        logger.info("Exiting program ...")
+    else:
+        logger.addHandler(logging_filehandler)
+        service = Controller.as_service(logger)
+        if cmd == "start":
+            service.start()
+        elif cmd == "stop":
+            service.stop()
+        elif cmd == "status":
+            if service.is_running():
+                print("mobiHue service is running.")
+            else:
+                print("mobiHue service is not running.")
+        else:
+            sys.exit('Unknown command "%s".' % cmd)

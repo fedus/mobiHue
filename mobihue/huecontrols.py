@@ -11,7 +11,7 @@ from time import time
 from qhue import Bridge
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("mH." + __name__)
 
 
 class Light():

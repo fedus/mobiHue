@@ -9,7 +9,7 @@ import signal
 import logging
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("mH." + __name__)
 
 
 class Signal_Handler():

@@ -5,12 +5,15 @@
 # (c) 2017 Federico Gentile
 # Settings module
 
-import yaml, logging, sys
+import yaml
+import logging
+import sys
+import os
 from rgb_xy import Converter, GamutC
 from webcolors import name_to_rgb
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("mH." + __name__)
 
 
 class Settings():
@@ -19,10 +22,12 @@ class Settings():
     def __init__(self):
         """Initialise the program's settings."""
         try:
-            self.stream = open("config.yaml", 'r')
+            self.directory = os.path.dirname(os.path.realpath(__file__))
+            self.full_config_file_path = self.directory + "/config.yaml"
+            self.stream = open(self.full_config_file_path, "r")
         except IOError:
-            logger.critical("Could not find configuration file!")
-            sys.exit("Aborting ...")
+            logger.error("Could not find configuration file under: %s", self.full_config_file_path)
+            raise
         else:
             with self.stream:
                 try:
@@ -32,7 +37,7 @@ class Settings():
                     self._build_hue_zone_state(self.config)
                 except yaml.YAMLError as yaml_error:
                     logger.error("A YAML error was raised while reading the configuration file: " + str(yaml_error))
-                    sys.exit("Aborting ...")
+                    raise
 
     def __getattr__(self, name):
         """Helper function to access the config dictionary like a class attribute."""
