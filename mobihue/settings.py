@@ -42,14 +42,14 @@ class Settings():
     def __getattr__(self, name):
         """Helper function to access the config dictionary like a class attribute."""
         return self.config[name]
-    
+
     def _colour_name_to_xy(self, colour_name):
         """Transforms a plain colour name to the XY format used by the Hue system."""
         self.colour_rgb = name_to_rgb(colour_name)
         self.colour_xy = self.converter.rgb_to_xy(self.colour_rgb[0], self.colour_rgb[1], self.colour_rgb[2])
         return self.colour_xy
 
-    def _build_hue_zone_state(self,config):
+    def _build_hue_zone_state(self, config):
         """Build a ready made Hue light state from the zone settings of the config file."""
         for zone in config["zones"]:
             if config["zones"][zone]["effect"] == "None":

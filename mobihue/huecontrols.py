@@ -6,7 +6,7 @@
 # Hue system control module
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from time import time
 from qhue import Bridge
 
@@ -89,16 +89,22 @@ class Sensor():
     def __init__(self, bridge, sensor_id):
         """Initialise the Sensor class."""
         self.hue_sensor = bridge.sensors[sensor_id]
-        self.reference_time = datetime.now().replace(microsecond=0)
+        self.reference_time = datetime.now().replace(microsecond=0) + timedelta(seconds=1)
         self.current_sensor_state = None
         self.has_been_polled = False
 
     def _datetime_from_utc_to_local(self, utc_datetime):
+        """Converts UTC time to the local timezone."""
         self.current_time = time()
         self.offset = datetime.fromtimestamp(self.current_time) - datetime.utcfromtimestamp(self.current_time)
         self.local_time = utc_datetime + self.offset
         return self.local_time
-    
+
+    def reset_reference_time(self):
+        """Resets the reference time used to check for a relevant button press."""
+        self.reference_time = datetime.now().replace(microsecond=0) + timedelta(seconds=1)
+        return True
+
     def poll(self):
         """Polls the Hue bridge for the current status of the sensor."""
         self.current_sensor_state = self.hue_sensor()["state"]
@@ -127,11 +133,29 @@ class Sensor():
             return False
 
 
+class On_Switch():
+    """Class representing a generic Hue sensor (type: CLIPGenericStatus) used to trigger the program's on switch."""
+
+    def __init__(self, bridge, on_switch_id):
+        """Initialise the On_Switch class."""
+        self.on_switch = bridge.sensors[on_switch_id]
+
+    def poll(self):
+        """Polls the sensor acting as an on switch, exposes the result and resets it."""
+        self.current_on_switch_status = self.on_switch()["state"]["status"]
+        if self.current_on_switch_status == 1:
+            self.on_switch.state(status=0)
+            return True
+        elif self.current_on_switch_status != 1:
+            return False
+
+
 class Hue_Control():
     """Master class representing both the Hue light and sensor."""
 
-    def __init__(self, ip, key, light_id, sensor_id):
+    def __init__(self, ip, key, light_id, sensor_id, on_switch_id):
         """Initialise the Hue_Control class."""
         self.bridge = Bridge(ip, key)
         self.light = Light(self.bridge, light_id)
         self.sensor = Sensor(self.bridge, sensor_id)
+        self.on_switch = On_Switch(self.bridge, on_switch_id)
