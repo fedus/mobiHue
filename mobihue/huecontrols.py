@@ -7,8 +7,9 @@
 
 import logging
 from datetime import datetime, timedelta
-from time import time
+from time import time, sleep
 from qhue import Bridge
+from mhexception import Mobihue_Exception
 
 
 logger = logging.getLogger("mH." + __name__)
@@ -19,16 +20,20 @@ class Light():
 
     redundant_pairs = ("colormode", "reachable", "alert")
 
-    def __init__(self, bridge, light_id):
+    def __init__(self, bridge, light_id, states=None):
         """Initialise the Light class."""
-        self.hue_light = bridge.lights[light_id]
+        self.hue_light_id = light_id
+        self.bridge = bridge
+        self.states = states
+        self.hue_light = self.bridge.lights[light_id]
         self.initial_state = self._pop_redundant_state_vars(self.hue_light()["state"])
         self.state_has_changed = False
 
     def _pop_redundant_state_vars(self, light_state):
-        """Removes certain variables from the Hue light state that interfere with this program's commands."""
-        for pair in self.redundant_pairs:
-            light_state.pop(pair, None)
+        """Removes certain variables from the Hue light state that interfere with this program's commands and disables any alerts."""
+        for self.pair in self.redundant_pairs:
+            light_state.pop(self.pair, None)
+        light_state["alert"] = "none"
         return light_state
 
     @property
@@ -37,6 +42,12 @@ class Light():
         self.is_on_result = self.hue_light()["state"]["on"]
         logger.debug("  >> On / off state of light requested. Result: %s", self.is_on_result)
         return self.is_on_result
+    
+    @property
+    def initial_on(self):
+        """Returns True or False depending on whether or not the Hue light was on or off at program start."""
+        logger.debug("  >> Initial on / off state of light requested. Result: %s", self.initial_state["on"])
+        return self.initial_state["on"]
 
     def set_state(self, **new_state):
         """Changes the state of the Hue light."""
@@ -44,6 +55,12 @@ class Light():
         self.hue_light.state(**new_state)
         self.state_has_changed = True
         return True
+    
+    def set_zone(self, zone):
+        """Sets the Hue light's state according to a specific zone."""
+        logger.debug("  >> Setting new light state according to zone: %s. State: %s", zone, str(self.states[zone]))
+        self.hue_light.state(**self.states[zone])
+        self.state_has_changed = True
 
     def reset(self):
         """Resets the Hue light to its initial state."""
@@ -82,6 +99,59 @@ class Light():
         else:
             return False
 
+    def __str__(self):
+        """Returns a human readable representation of the Light class instance."""
+        return "Hue light instance [id: {}]".format(self.hue_light_id)
+
+    def __repr__(self):
+        """Returns an object representation of the Light class instance."""
+        return "Light({}, {})".format(self.bridge, self.hue_light_id)
+
+class Scene_Manager():
+    """Class managing relevant Hue lights when the program is set up to use scenes."""
+
+    def __init__(self, bridge, scene_ids):
+        """Initialises the Group class."""
+        self.bridge = bridge
+        self.scene_ids = scene_ids
+        self.scene_lights = self._get_scene_lights()
+        self.state_has_changed = False
+
+    def _get_scene_lights(self):
+        """Checks what lights are used for a given scene and returns corresponding Light class instances."""
+        self.raw_light_ids = self.bridge.scenes[self.scene_ids["imminent"]]()["lights"]
+        return [Light(self.bridge, self.current_light_id) for self.current_light_id in self.raw_light_ids]
+
+    def reset(self):
+        """Resets all lights used in scene mode to their initial state."""
+        for self.current_light in self.scene_lights:
+            self.current_light.reset()
+        return True
+
+    def set_zone(self, zone):
+        """Sets the appropriate scene for a given zone."""
+        if not self.state_has_changed:
+            for self.current_light in self.scene_lights:
+                self.current_light.state_has_changed = True
+            self.state_has_changed = True
+        self.bridge.groups[0].action(scene=self.scene_ids[zone])
+        return True
+
+    def on(self):
+        """Turns all Hue lights of a given scene on."""
+        for self.current_light in self.scene_lights:
+            self.current_light.on()
+        return True
+    
+    @property
+    def initial_on(self):
+        """Returns True or False depending on whether or not all Hue lights for a given scene were on or off at program start."""
+        self._initial_on = False
+        for self.current_light in self.scene_lights:
+            if self.current_light.initial_on:
+                self._initial_on = True
+                break
+        return self._initial_on
 
 class Sensor():
     """Class representing the Hue sensor acting as a kill switch."""
@@ -153,9 +223,20 @@ class On_Switch():
 class Hue_Control():
     """Master class representing both the Hue light and sensor."""
 
-    def __init__(self, ip, key, light_id, sensor_id, on_switch_id):
+    def __init__(self, ip, key, light_id, sensor_id, on_switch_id, states=None, scenes=None):
         """Initialise the Hue_Control class."""
+        self._dev_scene_list = {"imminent": "MwukNidCo3cv4VG", "close": "vq2wD-0P9ijZnLz", "intermediate": "8LKStAFrDAOQA8g", "further": "fJIRDBtC7EpCc5p"}
         self.bridge = Bridge(ip, key)
-        self.light = Light(self.bridge, light_id)
         self.sensor = Sensor(self.bridge, sensor_id)
         self.on_switch = On_Switch(self.bridge, on_switch_id)
+        if states is not None and scenes is None:
+            self.light_mode = "states"
+            self.slave = Light(self.bridge, light_id, states)
+        elif states is None and scenes is not None:
+            self.light_mode = "scenes"
+            self.slave = Scene_Manager(self.bridge, self._dev_scene_list)
+        else:
+            raise Mobihue_Exception("Could not determine light mode (states or scenes).")
+        #self.light = Light(self.bridge, light_id, states)
+        #self.slave = Scene_Manager(self.bridge, self._dev_scene_list)
+        #self.slave = Light(self.bridge, light_id, states)

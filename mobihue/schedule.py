@@ -152,8 +152,12 @@ class Schedule():
                         }
                     self.parsed_schedule.append(Bus(**self.new_bus))
             self.parsed_schedule.sort(key=operator.attrgetter("eta"))
-            self._assign_schedule_variables(self.parsed_schedule)
-            return True
+            if len(self.parsed_schedule) > 0:
+                self._assign_schedule_variables(self.parsed_schedule)
+                return True
+            elif len(self.parsed_schedule) == 0:
+                self._assign_schedule_variables(False)
+                return False
         elif "Departure" not in self.raw_schedule:
             self._assign_schedule_variables(False)
             return False

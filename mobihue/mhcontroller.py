@@ -38,10 +38,10 @@ class Controller(Service):
         elif not as_service:
             self.is_service = False
             self._deferred_init()
-    
+
     @classmethod
     def as_service(cls, with_logger=None):
-        """Initialises de Controller class to be used as a service."""
+        """Initialises the Controller class to be used as a service."""
         return cls(True, with_logger)
 
     def _deferred_init(self):
@@ -58,7 +58,7 @@ class Controller(Service):
         self.sigterm_caught = False
         self.sigint_caught = False
         self.initialised = True
-    
+
     def _schedule_to_light(self):
         """Sets the Hue light colour according to the estimated time of arrival of the next bus."""
         self.schedule.update()
@@ -66,7 +66,9 @@ class Controller(Service):
             self.current_zone = self.schedule.next_departure.zone
             if self.current_zone != self.last_zone or self.settings.zones[self.current_zone]["hue_state"]["alert"] != "none":
                 logger.debug("  >> Zone change detected, synching light to bus schedule.")
-                self.hue_control.light.set_state(**self.settings.zones[self.current_zone]["hue_state"])
+                #self.hue_control.light.set_state(**self.settings.zones[self.current_zone]["hue_state"])
+                #self.hue_control.light.set_zone(self.current_zone)
+                self.hue_control.slave.set_zone(self.current_zone)
                 self.last_zone = self.current_zone
                 return True
             else:
@@ -79,7 +81,7 @@ class Controller(Service):
     def _reset_check(self):
         """Checks if a reset to the Hue light's original state is warranted."""
         self.sensor_last_action = self.hue_control.sensor.last_action
-        if self.sensor_last_action["actioned"] and self.hue_control.light.initial_state["on"] == True and self.sensor_last_action[
+        if self.sensor_last_action["actioned"] and self.hue_control.slave.initial_on == True and self.sensor_last_action[
             "button"] not in self.SENSOR_NO_RESET_BUTTONS:
             logger.debug("  >> Reset check: Reset is warranted.")
             return True
@@ -110,7 +112,7 @@ class Controller(Service):
         elif self.sigterm_caught:
             logger.debug("  >> Kill check positive: SIGTERM received by service.")
             return True
-    
+
     def _sigint_check(self):
         """Checks if SIGINT was received in case the Controller was initialised in standalone mode."""
         if not self.is_service:
@@ -119,7 +121,7 @@ class Controller(Service):
         elif self.is_service:
             self.sigint_caught = False
             return False
-    
+
     def _sigterm_check(self):
         """Checks if SIGTERM was received in case the Controller was initialised as a service."""
         if self.is_service:
@@ -149,7 +151,7 @@ class Controller(Service):
     def _run_core(self):
         """Provides the core runtime for the synchronisation of the lights to the schedule."""
         logger.info("Turning light on if needed.")
-        self.hue_control.light.on()
+        self.hue_control.slave.on()
         while not self._kill_check():
             if self.run_loop_count == 0:
                 logger.info("Synching light to schedule.")
@@ -161,7 +163,7 @@ class Controller(Service):
             sleep(1)
         logger.info("Synchronisation stopped. Resetting light if needed.")
         if self.sigint_caught or self.sigterm_caught or self._reset_check():
-            self.hue_control.light.reset()
+            self.hue_control.slave.reset()
 
     def run(self):
         """Main program runtime."""

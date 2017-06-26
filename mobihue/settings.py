@@ -34,7 +34,12 @@ class Settings():
                     self.config = yaml.safe_load(self.stream)
                     logger.info("Configuration file loaded successfully.")
                     self.converter = Converter(GamutC)
-                    self._build_hue_zone_state(self.config)
+                    if self._use_scene_mode():
+                        logger.debug("  >> Using scenes to set the Hue lights.")
+                        self._scrape_hue_scenes()
+                    else:
+                        logger.debug("  >> Using colour values to set the Hue lights.")
+                        self._build_hue_zone_state()
                 except yaml.YAMLError as yaml_error:
                     logger.error("A YAML error was raised while reading the configuration file: " + str(yaml_error))
                     raise
@@ -49,18 +54,33 @@ class Settings():
         self.colour_xy = self.converter.rgb_to_xy(self.colour_rgb[0], self.colour_rgb[1], self.colour_rgb[2])
         return self.colour_xy
 
-    def _build_hue_zone_state(self, config):
+    def _build_hue_zone_state(self):
         """Build a ready made Hue light state from the zone settings of the config file."""
-        for zone in config["zones"]:
-            if config["zones"][zone]["effect"] == "None":
-                zone_alert, zone_effect = "none", "none"
-            elif config["zones"][zone]["effect"] == "blink":
-                zone_alert, zone_effect = "lselect", "none"
-            elif config["zones"][zone]["effect"] == "colourloop":
-                zone_alert, zone_effect = "none", "colorloop"
+        self.config["hue"]["states"] = {}
+        for self.zone_key, self.zone_value in self.config["zones"].items():
+            if self.zone_value["effect"] == "None":
+                self.zone_alert, self.zone_effect = "none", "none"
+            elif self.zone_value["effect"] == "blink":
+                self.zone_alert, self.zone_effect = "lselect", "none"
+            elif self.zone_value["effect"] == "colourloop":
+                self.zone_alert, self.zone_effect = "none", "colorloop"
             else:
-                logger.error("Invalid value found in effect settings. "+config["zones"][zone]["effect"])
+                logger.error("Invalid value found in effect settings: "+self.zone_value["effect"])
                 sys.exit("Aborting ...")
-            zone_xy_colour = self._colour_name_to_xy(config["zones"][zone]["colour"])
-            config["zones"][zone]["hue_state"] = {"xy": zone_xy_colour, "alert": zone_alert, "effect": zone_effect}
-        return config
+            self.zone_xy_colour = self._colour_name_to_xy(self.zone_value["colour"])
+            self.config["zones"][self.zone_key]["hue_state"] = {"xy": self.zone_xy_colour, "alert": self.zone_alert, "effect": self.zone_effect}
+            self.config["hue"]["states"][self.zone_key] = self.config["zones"][self.zone_key]["hue_state"]
+        return self.config
+
+    def _scrape_hue_scenes(self):
+        """Collects all Hue scene IDs entered in the zone section of the configuration file and appends it to the Hue section."""
+        self.scene_list = {self.current_zone_key: self.current_zone_val["scene"] for self.current_zone_key, self.current_zone_val in self.config["zones"].items()}
+        self.config["hue"]["scenes"] = self.scene_list
+        return self.config
+
+    def _use_scene_mode(self):
+        """Returns true or false depending on whether or not the program should use the scenes indicated in the configuration file."""
+        if any(self.current_zone_val["scene"] is None for self.current_zone_key, self.current_zone_val in self.config["zones"].items()):
+            return False
+        else:
+            return True
