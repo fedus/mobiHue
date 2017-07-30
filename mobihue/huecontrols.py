@@ -8,8 +8,11 @@
 import logging
 from datetime import datetime, timedelta
 from time import time, sleep
+import backoff
+import requests
 from qhue import Bridge
 from mhexception import Mobihue_Exception
+from mobifunctions import backoff_handler
 
 
 logger = logging.getLogger("mH." + __name__)
@@ -175,6 +178,7 @@ class Sensor():
         self.reference_time = datetime.now().replace(microsecond=0) + timedelta(seconds=1)
         return True
 
+    @backoff.on_exception(backoff.expo, requests.exceptions.Timeout, max_tries=3, on_backoff=backoff_handler)
     def poll(self):
         """Polls the Hue bridge for the current status of the sensor."""
         self.current_sensor_state = self.hue_sensor()["state"]
@@ -210,6 +214,7 @@ class On_Switch():
         """Initialise the On_Switch class."""
         self.on_switch = bridge.sensors[on_switch_id]
 
+    @backoff.on_exception(backoff.expo, requests.exceptions.Timeout, max_tries=3, on_backoff=backoff_handler)
     def poll(self):
         """Polls the sensor acting as an on switch, exposes the result and resets it."""
         self.current_on_switch_status = self.on_switch()["state"]["status"]
@@ -223,13 +228,21 @@ class On_Switch():
 class Hue_Control():
     """Master class representing both the Hue light and sensor."""
 
-    def __init__(self, ip, key, light_id, sensor_id, on_switch_id, states=None, scenes=None):
+    def __init__(self, ip, key, light_id=None, sensor_id=None, on_switch_id=None, states=None, scenes=None):
         """Initialise the Hue_Control class."""
         self._dev_scene_list = {"imminent": "MwukNidCo3cv4VG", "close": "vq2wD-0P9ijZnLz", "intermediate": "8LKStAFrDAOQA8g", "further": "fJIRDBtC7EpCc5p"}
         self.bridge = Bridge(ip, key)
-        self.sensor = Sensor(self.bridge, sensor_id)
-        self.on_switch = On_Switch(self.bridge, on_switch_id)
+        if sensor_id is not None:
+            self.sensor = Sensor(self.bridge, sensor_id)
+        else:
+            self.sensor = False
+        if on_switch_id is not None:
+            self.on_switch = On_Switch(self.bridge, on_switch_id)
+        else:
+            self.on_switch = False
         if states is not None and scenes is None:
+            if light_id is None:
+                raise Mobihue_Exception("Light mode set to to states, but no light id has been provided.")
             self.light_mode = "states"
             self.slave = Light(self.bridge, light_id, states)
         elif states is None and scenes is not None:

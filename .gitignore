@@ -1,0 +1,8 @@
+.AppleDouble/
+.DS_Store
+.idea/
+.vscode/
+mobihue/.AppleDouble/
+mobihue/__pycache__/
+mobihue/config.yaml
+mobihue/rgb_xy.py

@@ -14,7 +14,7 @@ from mobifunctions import print_welcome
 # Logging setup
 logger = logging.getLogger("mH")
 logger.setLevel(logging.INFO)
-logging_filehandler = logging.handlers.TimedRotatingFileHandler("mobiHue.log", when='midnight', interval=1, backupCount=7, encoding=None, delay=True, utc=False, atTime=None)
+logging_filehandler = logging.handlers.TimedRotatingFileHandler("/var/log/mobiHue/mobiHue.log", when='midnight', interval=1, backupCount=7, encoding=None, delay=True, utc=False, atTime=None)
 logging_consolehandler = logging.StreamHandler()
 logging_formatter = logging.Formatter('%(asctime)s [%(levelname)-8s] %(name)15s ~ %(message)s', datefmt='%Y/%m/%d %H:%M:%S')
 logging_filehandler.setFormatter(logging_formatter)
@@ -26,6 +26,12 @@ requests_logger = logging.getLogger("requests.packages.urllib3.connectionpool")
 requests_logger.propagate = True
 requests_logger.setLevel(logging.DEBUG)
 requests_logger.name = "mH.requests"
+
+backoff_logger = logging.getLogger("backoff")
+backoff_logger.propagate = True
+backoff_logger.setLevel(logging.DEBUG)
+backoff_logger.name = "mH.backoff"
+backoff_logger.setLevel(logging.INFO)
 
 
 

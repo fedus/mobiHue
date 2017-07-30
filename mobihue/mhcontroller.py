@@ -93,7 +93,7 @@ class Controller(Service):
         """Returns True or False depending on whether an event was triggered that should lead to the program's exit."""
         self._sigint_check()
         self._sigterm_check()
-        if not self.sigint_caught and not self.sigterm_caught:
+        if not self.sigint_caught and not self.sigterm_caught and self.settings.use_kill_switch:
             self.hue_control.sensor.poll()
             self.sensor_last_action = self.hue_control.sensor.last_action
             if self.sensor_last_action["actioned"]:

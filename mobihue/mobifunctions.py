@@ -17,3 +17,5 @@ def print_welcome():
     print("")
     logger.info("mobiHue starting ...")
 
+def backoff_handler(details):
+    logger.warning("Backing off {wait:0.1f} seconds afters {tries} tries calling function {target} with args {args} and kwargs {kwargs}".format(**details))

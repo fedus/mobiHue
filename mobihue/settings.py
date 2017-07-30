@@ -11,6 +11,7 @@ import sys
 import os
 from rgb_xy import Converter, GamutC
 from webcolors import name_to_rgb
+from mhexception import Mobihue_Exception
 
 
 logger = logging.getLogger("mH." + __name__)
