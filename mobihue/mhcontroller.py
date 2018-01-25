@@ -64,15 +64,13 @@ class Controller(Service):
         self.schedule.update()
         if self.schedule.next_departure is not None:
             self.current_zone = self.schedule.next_departure.zone
-            if self.current_zone != self.last_zone or self.settings.zones[self.current_zone]["hue_state"]["alert"] != "none":
+            if self.current_zone != self.last_zone or (self.hue_control.light_mode == "states" and self.settings.zones[self.current_zone]["hue_state"]["alert"] != "none"):
                 logger.debug("  >> Zone change detected, synching light to bus schedule.")
-                #self.hue_control.light.set_state(**self.settings.zones[self.current_zone]["hue_state"])
-                #self.hue_control.light.set_zone(self.current_zone)
                 self.hue_control.slave.set_zone(self.current_zone)
                 self.last_zone = self.current_zone
                 return True
             else:
-                logger.debug("  >> No zone change detected. Light still in synch with bus schedule.")
+                logger.debug("  >> No zone change detected. Light still in sync with bus schedule.")
                 return False
         elif self.schedule.next_departure is None:
             logger.debug("  >> No next departure found. Not synching light to schedule.")

@@ -39,7 +39,7 @@ class Settings():
                         logger.debug("  >> Using scenes to set the Hue lights.")
                         self._scrape_hue_scenes()
                     else:
-                        logger.debug("  >> Using colour values to set the Hue lights.")
+                        logger.debug("  >> Using states to set the Hue lights.")
                         self._build_hue_zone_state()
                 except yaml.YAMLError as yaml_error:
                     logger.error("A YAML error was raised while reading the configuration file: " + str(yaml_error))

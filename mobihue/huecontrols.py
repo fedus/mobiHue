@@ -21,7 +21,7 @@ logger = logging.getLogger("mH." + __name__)
 class Light():
     """Class representing the Hue light to be controlled."""
 
-    redundant_pairs = ("colormode", "reachable", "alert")
+    redundant_pairs = ("colormode", "reachable", "alert", "mode")
 
     def __init__(self, bridge, light_id, states=None):
         """Initialise the Light class."""
@@ -123,18 +123,23 @@ class Scene_Manager():
     def _get_scene_lights(self):
         """Checks what lights are used for a given scene and returns corresponding Light class instances."""
         self.raw_light_ids = self.bridge.scenes[self.scene_ids["imminent"]]()["lights"]
+        logger.debug("  >> Lights for scene mode requested. Ids: %s", str(self.raw_light_ids))
         return [Light(self.bridge, self.current_light_id) for self.current_light_id in self.raw_light_ids]
 
     def reset(self):
         """Resets all lights used in scene mode to their initial state."""
+        logger.debug("  >> Light reset requested:")
         for self.current_light in self.scene_lights:
+            logger.debug("    - Resetting light %s", str(self.current_light))
             self.current_light.reset()
         return True
 
     def set_zone(self, zone):
         """Sets the appropriate scene for a given zone."""
+        logger.debug("  >> Setting new scene according to zone: %s. Scene: %s", zone, str(self.scene_ids[zone]))
         if not self.state_has_changed:
             for self.current_light in self.scene_lights:
+                logger.debug("    - Setting state_has_changed to True for light %s", str(self.current_light))
                 self.current_light.state_has_changed = True
             self.state_has_changed = True
         self.bridge.groups[0].action(scene=self.scene_ids[zone])
@@ -142,7 +147,9 @@ class Scene_Manager():
 
     def on(self):
         """Turns all Hue lights of a given scene on."""
+        logger.debug("  >> Turning lights on for given scene.")
         for self.current_light in self.scene_lights:
+            logger.debug("    - Turning light %s on.", str(self.current_light))
             self.current_light.on()
         return True
     
@@ -154,6 +161,7 @@ class Scene_Manager():
             if self.current_light.initial_on:
                 self._initial_on = True
                 break
+        logger.debug("Checking if all lights for given scene were on to start with. Result: %s", str(self._initial_on))
         return self._initial_on
 
 class Sensor():
@@ -182,7 +190,7 @@ class Sensor():
     def poll(self):
         """Polls the Hue bridge for the current status of the sensor."""
         self.current_sensor_state = self.hue_sensor()["state"]
-        logger.debug("  >> Polling sensor. Current sensor state : %s", str(self.current_sensor_state))
+        logger.debug("  >> Polling kill switch sensor. Current sensor state : %s", str(self.current_sensor_state))
         self.has_been_polled = True
         return True
 
@@ -200,10 +208,10 @@ class Sensor():
                     "button": self.current_sensor_state["buttonevent"],
                     "actioned": self.actioned_response,
                 }
-            logger.debug("  >> Last action of sensor has been requested: Returning parsed sensor data from cache. Data: %s", str(self.friendly_current_sensor_state))
+            logger.debug("  >> Last action of kill switch sensor has been requested: Returning parsed sensor data from cache. Data: %s", str(self.friendly_current_sensor_state))
             return self.friendly_current_sensor_state
         elif not self.has_been_polled:
-            logger.warning("  >> Last action of sensor has been requested: Could not return data as it seems that the sensor has not been polled yet.")
+            logger.warning("  >> Last action of kill switch sensor has been requested: Could not return data as it seems that the sensor has not been polled yet.")
             return False
 
 
@@ -219,9 +227,11 @@ class On_Switch():
         """Polls the sensor acting as an on switch, exposes the result and resets it."""
         self.current_on_switch_status = self.on_switch()["state"]["status"]
         if self.current_on_switch_status == 1:
+            logger.debug("  >> Polling on switch sensor. Actioned. Current sensor state : %s - Resetting.", str(self.current_on_switch_status))
             self.on_switch.state(status=0)
             return True
         elif self.current_on_switch_status != 1:
+            logger.debug("  >> Polling on switch sensor. Not actioned. Current sensor state : %s", str(self.current_on_switch_status))
             return False
 
 
@@ -230,7 +240,7 @@ class Hue_Control():
 
     def __init__(self, ip, key, light_id=None, sensor_id=None, on_switch_id=None, states=None, scenes=None):
         """Initialise the Hue_Control class."""
-        self._dev_scene_list = {"imminent": "MwukNidCo3cv4VG", "close": "vq2wD-0P9ijZnLz", "intermediate": "8LKStAFrDAOQA8g", "further": "fJIRDBtC7EpCc5p"}
+        #self._dev_scene_list = {"imminent": "MwukNidCo3cv4VG", "close": "vq2wD-0P9ijZnLz", "intermediate": "8LKStAFrDAOQA8g", "further": "fJIRDBtC7EpCc5p"}
         self.bridge = Bridge(ip, key)
         if sensor_id is not None:
             self.sensor = Sensor(self.bridge, sensor_id)
@@ -245,11 +255,10 @@ class Hue_Control():
                 raise Mobihue_Exception("Light mode set to to states, but no light id has been provided.")
             self.light_mode = "states"
             self.slave = Light(self.bridge, light_id, states)
+            logger.info("Using light mode: states.")
         elif states is None and scenes is not None:
             self.light_mode = "scenes"
-            self.slave = Scene_Manager(self.bridge, self._dev_scene_list)
+            self.slave = Scene_Manager(self.bridge, scenes)
+            logger.info("Using light mode: scenes.")
         else:
             raise Mobihue_Exception("Could not determine light mode (states or scenes).")
-        #self.light = Light(self.bridge, light_id, states)
-        #self.slave = Scene_Manager(self.bridge, self._dev_scene_list)
-        #self.slave = Light(self.bridge, light_id, states)

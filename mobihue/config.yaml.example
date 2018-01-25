@@ -1,0 +1,49 @@
+# mobiHue.py configuration file (YAML)
+# To use this file, remove the ".example" part from the filename and adapt the settings below.
+
+stop:      id=A=1@O=Bonnevoie,%20Rotonde@X=6,137295@Y=49,599520@U=82@L=200404034@B=1@p=1491465807     # Bus / train stop ID from Mobiliteit.lu
+
+interval:  10                 # Update interval in seconds
+
+transport:
+ - number   : 5               # Bus / train number(s) to watch out for
+   direction: Bertrange       # (Partial) direction of given bus / train
+ - number   : 6
+   direction: Bertrange
+ - number   : 15
+   direction: Merl
+
+
+zones:                           # Defines the colour and time intervals for the Hue light alerts
+ imminent:                       # ETA zone for imminent bus or train arrival
+  minutes:  0                    # Minute (value inclusive) until bus or train arrival that trigger this zone
+  scene  :  			 # Scene ID on the Hue bridge used for this zone (NOTE: must be set for ALL zones to work, the "colour" and "effect" fields will then be IGNORED!)
+  colour :  red                  # Desired colour for Hue lights
+  effect :  blink                # Desired effect for Hue lights (for instance, blink or colourloop)
+ close:                          # ETA zone for "close" bus or train arrival
+  minutes:  2
+  scene  :
+  colour :  red
+  effect :  None
+ intermediate:                   # ETA zone for "intermediate" bus or train arrival
+  minutes:  5
+  scene  :
+  colour :  orange
+  effect :  None
+ further :                       # ETA zone for "further" bus or train arrival. No minutes need to be given as the value is deducted from the "intermediate" zone
+  scene  : 
+  colour :  green
+  effect :  None
+
+
+hue:
+ ip :                # Hue Bridge IP
+ key:                # Hue client key
+ light_id:           # Hue light to control
+ sensor_id:          # Hue sensor to act as kill switch, only use if you want to use a Hue Dimmer Switch
+ on_switch_id:       # Hue generic sensor acting as on-switch, only use if you want to use a Hue Dimmer Switch, requires additional manual setup
+
+use_on_switch:   False               # Set to True if the synchronisation should be triggered by the given Hue sensor (on_switch_id)
+use_kill_switch: False               # Set to True to be able to to stop the synchronisation using a Hue dimmer switch (sensor_id)
+
+mobiliteit_url: http://87.230.72.18/restproxy/departureBoard?accessId=cdt&format=json&     # Mobiliteit API's base URL

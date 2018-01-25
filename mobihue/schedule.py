@@ -138,6 +138,7 @@ class Schedule():
         self.parsed_schedule = []
         self.current_time = datetime.now().replace(second=0, microsecond=0)
         if "Departure" in self.raw_schedule:
+            logger.debug("  >> Departure data with %s journeys found.", str(len(self.raw_schedule["Departure"])))
             for self.journey in self.raw_schedule["Departure"]:
                 if any(str(self.bus["number"]) == str(self.journey["Product"]["line"]) and self.bus["direction"] in self.journey["direction"] for self.bus in self.transport):
                     self.departure_times = self._parseJourneyTimes(self.journey, self.current_time)
@@ -150,15 +151,19 @@ class Schedule():
                         "delay": self.departure_times["delay"],
                         "zone": self.departure_times["zone"],
                         }
+                    logger.debug("    - Adding bus: %s", str(self.new_bus))
                     self.parsed_schedule.append(Bus(**self.new_bus))
             self.parsed_schedule.sort(key=operator.attrgetter("eta"))
             if len(self.parsed_schedule) > 0:
+                logger.debug("    -- Total of %s buses added.", str(len(self.parsed_schedule)))
                 self._assign_schedule_variables(self.parsed_schedule)
                 return True
             elif len(self.parsed_schedule) == 0:
+                logger.debug("    -- No buses added.")
                 self._assign_schedule_variables(False)
                 return False
         elif "Departure" not in self.raw_schedule:
+            logger.warning("No departure data included in API response!")
             self._assign_schedule_variables(False)
             return False
         self.last_update = self.current_time
@@ -166,12 +171,14 @@ class Schedule():
     def _assign_schedule_variables(self, parsed_schedule):
         """Assigns schedule data to the right internal variables."""
         if parsed_schedule is not False:
+            logger.debug("  >> Assigning non-empty schedule variables.")
             self.next_departure = parsed_schedule[0]
             self.last_departure = parsed_schedule[-1]
             self.all_departures = parsed_schedule
             self.total_departures = len(parsed_schedule)
             return True
         elif not parsed_schedule:
+            logger.debug("  >> Assigning empty schedule variables.")
             self.next_departure = None
             self.last_departure = None
             self.all_departures = None
