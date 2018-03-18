@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # mobiHue.py - announces real time bus arrivals using Philipps Hue lights
-# (c) 2017 Federico Gentile
+# (c) 2017, 2018 Federico Gentile
 # HAFAS / Mobiliteit.lu schedule module
 
 import logging
@@ -15,7 +15,7 @@ from time import sleep
 logger = logging.getLogger("mH." + __name__)
 
 
-class Bus():
+class Bus:
     """Holds journey information for a single Bus at a time."""
 
     def __init__(self, line, direction, time, rtTime, eta, delay, zone):
@@ -37,7 +37,7 @@ class Bus():
         return "Bus({}, {}, {}, {}, {}, {}, {})".format(self.line, self.direction, self.time, self.rtTime, self.eta, self.delay, self.zone)
 
 
-class Schedule():
+class Schedule:
     """Connects to the Mobiliteit.lu API and returns all relevant timetable data for the program."""
 
     def __init__(self, transport, stop_id, api_base_url, zones):
@@ -62,25 +62,29 @@ class Schedule():
                 self.api_request = requests.get(self.api_final_url, timeout=self.connection_timeout, headers={"host":"travelplanner.mobiliteit.lu"})
                 self.api_request.raise_for_status()
             except (requests.ConnectionError, requests.HTTPError, requests.TooManyRedirects, requests.Timeout) as e:
-                if self.error_count < self.allowed_error_count - 2:
+                if self.error_count < self.allowed_error_count - 1:
                     logger.warning("The HTTP request to the Mobiliteit.lu API raised an exception. Waiting 2 seconds. Try %s of %s ...", str(self.error_count + 2), str(self.allowed_error_count))
                     sleep(2)
                     continue
                 else:
-                    raise
+                    logger.error("The HTTP request to the Mobiliteit.lu API failed an raised exceptions for a total of %s tries. Returning empty result.", str(self.allowed_error_count))
+                    return False
             break
         return self.api_request
 
     def _mobi_api_json(self):
         """Executes the Mobiliteit.lu API request function and turns the result into a JSON object."""
         self.api_request = self._mobi_api_request()
-        try:
-            self.api_json = self.api_request.json()
-        except ValueError:
-            logger.critical("A JSON decoding error was encountered.")
-            raise
+        if not self.api_request:
+            return False
         else:
-            return self.api_json
+            try:
+                self.api_json = self.api_request.json()
+            except ValueError:
+                logger.critical("A JSON decoding error was encountered.")
+                raise
+            else:
+                return self.api_json
 
     def _string_to_datetime(self, journey, is_real_time):
         """"Converts strings of scheduled and realtime date-times to datetime objects."""
@@ -137,7 +141,11 @@ class Schedule():
         self.raw_schedule = self._mobi_api_json()
         self.parsed_schedule = []
         self.current_time = datetime.now().replace(second=0, microsecond=0)
-        if "Departure" in self.raw_schedule:
+        if not self.raw_schedule or "Departure" not in self.raw_schedule:
+            logger.warning("No departure data included in API response!")
+            self._assign_schedule_variables(False)
+            return False
+        elif "Departure" in self.raw_schedule:
             logger.debug("  >> Departure data with %s journeys found.", str(len(self.raw_schedule["Departure"])))
             for self.journey in self.raw_schedule["Departure"]:
                 if any(str(self.bus["number"]) == str(self.journey["Product"]["line"]) and self.bus["direction"] in self.journey["direction"] for self.bus in self.transport):
@@ -162,10 +170,6 @@ class Schedule():
                 logger.debug("    -- No buses added.")
                 self._assign_schedule_variables(False)
                 return False
-        elif "Departure" not in self.raw_schedule:
-            logger.warning("No departure data included in API response!")
-            self._assign_schedule_variables(False)
-            return False
         self.last_update = self.current_time
 
     def _assign_schedule_variables(self, parsed_schedule):

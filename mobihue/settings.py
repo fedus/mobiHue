@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # mobiHue.py - announces real time bus arrivals using Philipps Hue lights
-# (c) 2017 Federico Gentile
+# (c) 2017, 2018 Federico Gentile
 # Settings module
 
 import yaml
@@ -17,7 +17,7 @@ from mhexception import Mobihue_Exception
 logger = logging.getLogger("mH." + __name__)
 
 
-class Settings():
+class Settings:
     """A class that loads and holds the settings."""
 
     def __init__(self):

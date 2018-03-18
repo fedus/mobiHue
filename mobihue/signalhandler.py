@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # mobiHue.py - announces real time bus arrivals using Philipps Hue lights
-# (c) 2017 Federico Gentile
+# (c) 2017, 2018 Federico Gentile
 # Module used to handle signals.
 
 import signal
@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger("mH." + __name__)
 
 
-class Signal_Handler():
+class Signal_Handler:
     """This class handles signals and exposes a catch to other modules."""
 
     def __init__(self):

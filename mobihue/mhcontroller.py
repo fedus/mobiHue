@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # mobiHue.py - announces real time bus arrivals using Philipps Hue lights
-# (c) 2017 Federico Gentile
+# (c) 2017, 2018 Federico Gentile
 # Control module to handle the Schedule and Hue_Control classes. Main app runtime.
 
 import logging
@@ -13,6 +13,7 @@ from settings import Settings
 from schedule import Schedule
 from huecontrols import Hue_Control
 from signalhandler import Signal_Handler
+from mhplugin import Pluginmanager
 
 
 logger = logging.getLogger("mH." + __name__)
@@ -46,10 +47,15 @@ class Controller(Service):
 
     def _deferred_init(self):
         """Deferred initialisation of the class, used in case the class is used as a service."""
-        if not self.is_service:
-            self.signal_handler = Signal_Handler()
         self.settings = Settings()
         self.schedule = Schedule(self.settings.transport, self.settings.stop, self.settings.mobiliteit_url, self.settings.zones)
+        self._cyclable_init()
+        self.plugin_mgr = Pluginmanager(True)
+        self.initialised = True
+
+    def _cyclable_init(self):
+        if not self.is_service:
+            self.signal_handler = Signal_Handler()
         self.hue_control = Hue_Control(**self.settings.hue)
         self.last_zone = None
         self.current_zone = None
@@ -57,23 +63,22 @@ class Controller(Service):
         self.run_loop_count = 0
         self.sigterm_caught = False
         self.sigint_caught = False
-        self.initialised = True
 
     def _schedule_to_light(self):
         """Sets the Hue light colour according to the estimated time of arrival of the next bus."""
         self.schedule.update()
-        if self.schedule.next_departure is not None:
+        if self.schedule.next_departure is None:
+            self.current_zone = "warning"
+            logger.debug("  >> No next departure found. Warning zone enabled.")
+        else:
             self.current_zone = self.schedule.next_departure.zone
-            if self.current_zone != self.last_zone or (self.hue_control.light_mode == "states" and self.settings.zones[self.current_zone]["hue_state"]["alert"] != "none"):
-                logger.debug("  >> Zone change detected, synching light to bus schedule.")
-                self.hue_control.slave.set_zone(self.current_zone)
-                self.last_zone = self.current_zone
-                return True
-            else:
-                logger.debug("  >> No zone change detected. Light still in sync with bus schedule.")
-                return False
-        elif self.schedule.next_departure is None:
-            logger.debug("  >> No next departure found. Not synching light to schedule.")
+        if self.current_zone != self.last_zone or (self.hue_control.light_mode == "states" and self.settings.zones[self.current_zone]["hue_state"]["alert"] != "none"):
+            logger.debug("  >> Zone change detected, synching light to schedule.")
+            self.hue_control.slave.set_zone(self.current_zone)
+            self.last_zone = self.current_zone
+            return True
+        else:
+            logger.debug("  >> No zone change detected. Light still in sync with schedule.")
             return False
 
     def _reset_check(self):
@@ -135,7 +140,7 @@ class Controller(Service):
         while not self.sigint_caught and not self.sigterm_caught:
             if self.hue_control.on_switch.poll():
                 logger.info("On-switch actioned. Starting runtime.")
-                self._deferred_init()
+                self._cyclable_init()
                 self._run_core()
                 if not self.sigint_caught and not self.sigterm_caught:
                     logger.info("Watching on-switch ...")
@@ -150,16 +155,19 @@ class Controller(Service):
         """Provides the core runtime for the synchronisation of the lights to the schedule."""
         logger.info("Turning light on if needed.")
         self.hue_control.slave.on()
+        self.plugin_mgr.begin()
         while not self._kill_check():
             if self.run_loop_count == 0:
                 logger.info("Synching light to schedule.")
                 self._schedule_to_light()
                 logger.info("Next bus: %s", str(self.schedule.next_departure))
+                self.plugin_mgr.data(self.schedule.next_departure)
             elif self.run_loop_count == self.settings.interval:
                 self.run_loop_count = -1
             self.run_loop_count += 1
             sleep(1)
         logger.info("Synchronisation stopped. Resetting light if needed.")
+        self.plugin_mgr.end()
         if self.sigint_caught or self.sigterm_caught or self._reset_check():
             self.hue_control.slave.reset()
 

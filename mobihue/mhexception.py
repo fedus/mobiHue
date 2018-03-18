@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # mobiHue.py - announces real time bus arrivals using Philipps Hue lights
-# (c) 2017 Federico Gentile
+# (c) 2017, 2018 Federico Gentile
 # Module containing a custom exception for the program.
 
 

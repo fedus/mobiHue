@@ -17,7 +17,7 @@ transport:
 zones:                           # Defines the colour and time intervals for the Hue light alerts
  imminent:                       # ETA zone for imminent bus or train arrival
   minutes:  0                    # Minute (value inclusive) until bus or train arrival that trigger this zone
-  scene  :  			 # Scene ID on the Hue bridge used for this zone (NOTE: must be set for ALL zones to work, the "colour" and "effect" fields will then be IGNORED!)
+  scene  :                       # Scene ID on the Hue bridge used for this zone (NOTE: must be set for ALL zones to work, the "colour" and "effect" fields will then be IGNORED!)
   colour :  red                  # Desired colour for Hue lights
   effect :  blink                # Desired effect for Hue lights (for instance, blink or colourloop)
  close:                          # ETA zone for "close" bus or train arrival
@@ -33,6 +33,10 @@ zones:                           # Defines the colour and time intervals for the
  further :                       # ETA zone for "further" bus or train arrival. No minutes need to be given as the value is deducted from the "intermediate" zone
   scene  : 
   colour :  green
+  effect :  None
+ warning :                       # Colour used to signal issues (for example, connectivity problems or no scheduled transport)
+  scene  :  
+  colour :  cyan
   effect :  None
 
 

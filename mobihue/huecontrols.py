@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # mobiHue.py - announces real time bus arrivals using Philipps Hue lights
-# (c) 2017 Federico Gentile
+# (c) 2017, 2018 Federico Gentile
 # Hue system control module
 
 import logging
@@ -18,7 +18,7 @@ from mobifunctions import backoff_handler
 logger = logging.getLogger("mH." + __name__)
 
 
-class Light():
+class Light:
     """Class representing the Hue light to be controlled."""
 
     redundant_pairs = ("colormode", "reachable", "alert", "mode")
@@ -110,7 +110,7 @@ class Light():
         """Returns an object representation of the Light class instance."""
         return "Light({}, {})".format(self.bridge, self.hue_light_id)
 
-class Scene_Manager():
+class Scene_Manager:
     """Class managing relevant Hue lights when the program is set up to use scenes."""
 
     def __init__(self, bridge, scene_ids):
@@ -164,7 +164,7 @@ class Scene_Manager():
         logger.debug("Checking if all lights for given scene were on to start with. Result: %s", str(self._initial_on))
         return self._initial_on
 
-class Sensor():
+class Sensor:
     """Class representing the Hue sensor acting as a kill switch."""
 
     def __init__(self, bridge, sensor_id):
@@ -215,7 +215,7 @@ class Sensor():
             return False
 
 
-class On_Switch():
+class On_Switch:
     """Class representing a generic Hue sensor (type: CLIPGenericStatus) used to trigger the program's on switch."""
 
     def __init__(self, bridge, on_switch_id):
@@ -235,7 +235,7 @@ class On_Switch():
             return False
 
 
-class Hue_Control():
+class Hue_Control:
     """Master class representing both the Hue light and sensor."""
 
     def __init__(self, ip, key, light_id=None, sensor_id=None, on_switch_id=None, states=None, scenes=None):
