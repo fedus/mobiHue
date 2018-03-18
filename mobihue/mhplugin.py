@@ -3,7 +3,7 @@
 
 # mobiHue.py - announces real time bus arrivals using Philipps Hue lights
 # (c) 2017, 2018 Federico Gentile
-# Control module to handle the Schedule and Hue_Control classes. Main app runtime.
+# Simple plugin management system.
 
 
 import logging
