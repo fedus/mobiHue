@@ -161,7 +161,7 @@ class Controller(Service):
                 logger.info("Synching light to schedule.")
                 self._schedule_to_light()
                 logger.info("Next bus: %s", str(self.schedule.next_departure))
-                self.plugin_mgr.data(self.schedule.next_departure)
+                self.plugin_mgr.data(self.schedule.all_departures)
             elif self.run_loop_count == self.settings.interval:
                 self.run_loop_count = -1
             self.run_loop_count += 1
